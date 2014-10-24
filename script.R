@@ -4,6 +4,7 @@ SCC <- readRDS("Source_Classification_Code.rds")
 
 # Prepare data format
 NEI$type <- factor(NEI$type)
+SCC$EISector <- as.numeric(SCC$EI.Sector)
 
 # Question #1
 q1 <- sqldf('select year, sum(Emissions) as total 
@@ -24,3 +25,16 @@ q3 <- sqldf('select year, type, sum(Emissions) as total
              where fips = "24510"
              group by year, type')
 qplot(year, total, data = q3, facets = . ~ type, geom = "line", main = "Emission of PM2.5 in Baltimore, MD by emission type", xlab = "Year", ylab = "Emission of PM2.5")
+
+# Question #4
+# I take SCCs where EI.Sector contains COAL. There are [13, 18, 23] SCCs.
+# It includes:
+# "Fuel Comb - Comm/Institutional - Coal", 
+# "Fuel Comb - Electric Generation - Coal",
+# "Fuel Comb - Industrial Boilers, ICEs - Coal"
+q4 <- sqldf('select year, sum(NEI.Emissions) as total 
+             from NEI
+             join SCC on SCC.SCC = NEI.SCC
+             where SCC.EISector in (13, 18, 23)
+             group by year')
+qplot(year, total, data = q4, geom = "line", ylim = c(0, max(q4$total)), main = "Emission of coal combustion-related sources", xlab = "Year", ylab = "Emission of PM2.5")
