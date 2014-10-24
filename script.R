@@ -1,3 +1,6 @@
+library(ggplot2)
+library(sqldf)
+
 # Load NEI data
 NEI <- readRDS("summarySCC_PM25.rds")
 SCC <- readRDS("Source_Classification_Code.rds")
@@ -32,11 +35,11 @@ qplot(year, total, data = q3, facets = . ~ type, geom = "line", main = "Emission
 # [13] "Fuel Comb - Comm/Institutional - Coal", 
 # [18] "Fuel Comb - Electric Generation - Coal",
 # [23] "Fuel Comb - Industrial Boilers, ICEs - Coal"
-q4 <- sqldf('select year, sum(NEI.Emissions) as total 
+q4 <- sqldf('select NEI.year, sum(NEI.Emissions) as total 
              from NEI
              join SCC on SCC.SCC = NEI.SCC
              where SCC.EISector in (13, 18, 23)
-             group by year')
+             group by NEI.year')
 qplot(year, total, data = q4, geom = "line", ylim = c(0, max(q4$total)), main = "Emission of coal combustion-related sources", xlab = "Year", ylab = "Emission of PM2.5")
 
 # Question #5
@@ -49,10 +52,33 @@ qplot(year, total, data = q4, geom = "line", ylim = c(0, max(q4$total)), main = 
 # [50] "Mobile - On-Road Diesel Light Duty Vehicles"
 # [51] "Mobile - On-Road Gasoline Heavy Duty Vehicles"
 # [52] "Mobile - On-Road Gasoline Light Duty Vehicles"
-q5 <- sqldf('select year, sum(NEI.Emissions) as total 
+q5 <- sqldf('select NEI.year, sum(NEI.Emissions) as total 
              from NEI
              join SCC on SCC.SCC = NEI.SCC
              where SCC.EISector in (43, 44, 45, 49, 50, 51, 52)
              and NEI.fips = "24510"
-             group by year')
+             group by NEI.year')
 qplot(year, total, data = q5, geom = "line", ylim = c(0, max(q5$total)), main = "Emission from motor vehicle sources in Baltimore, MD", xlab = "Year", ylab = "Emission of PM2.5")
+
+# Question #6
+# I take SCCs where motor vehicles are. There are [43, 44, 45, 49, 50, 51, 52] factor levels of SCC$EI.Sector
+# It includes:
+# [43] "Mobile - Aircraft"
+# [44] "Mobile - Commercial Marine Vessels"
+# [45] "Mobile - Locomotives"
+# [49] "Mobile - On-Road Diesel Heavy Duty Vehicles"
+# [50] "Mobile - On-Road Diesel Light Duty Vehicles"
+# [51] "Mobile - On-Road Gasoline Heavy Duty Vehicles"
+# [52] "Mobile - On-Road Gasoline Light Duty Vehicles"
+q6 <- sqldf('select NEI.year, NEI.fips, sum(NEI.Emissions) as total 
+             from NEI
+             join SCC on SCC.SCC = NEI.SCC
+             where SCC.EISector in (43, 44, 45, 49, 50, 51, 52)
+             and NEI.fips in ("24510", "06037")
+             group by NEI.year, NEI.fips')
+q6select <- q6
+# Normalize data differently for different fips
+q6 <- sqldf(c("update q6 set total = 100 * total / (select total from q6select where q6select.fips = q6.fips limit 1)", "select * from main.q6"))
+# Let's make more understandable names for the areas
+q6$Area <- factor(q6$fips, levels=c("06037", "24510"), labels=c("Los Angeles County", "Baltimore, MD"))
+qplot(year, total, data = q6, geom = "line", color = Area, ylim = c(0, max(q6$total)), main = "Changes in emission from motor vehicle sources in Baltimore, MD vs Los Angeles County", xlab = "Year", ylab = "Change of emission of PM2.5, %")
