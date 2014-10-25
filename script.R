@@ -77,7 +77,7 @@ q6 <- sqldf('select NEI.year, NEI.fips, sum(NEI.Emissions) as total
              and NEI.fips in ("24510", "06037")
              group by NEI.year, NEI.fips')
 q6select <- q6
-# Normalize data differently for different fips
+# Normalize data differently for different areas
 q6 <- sqldf(c("update q6 set total = 100 * total / (select total from q6select where q6select.fips = q6.fips limit 1)", "select * from main.q6"))
 # Let's make more understandable names for the areas
 q6$Area <- factor(q6$fips, levels=c("06037", "24510"), labels=c("Los Angeles County", "Baltimore, MD"))
